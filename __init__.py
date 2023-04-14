@@ -1,5 +1,6 @@
 from nonebot.plugin.on import on_message,on_notice
 from nonebot.rule import to_me
+from nonebot.log import logger
 from nonebot.adapters.onebot.v11 import (
     GROUP,
     GroupMessageEvent,
@@ -11,6 +12,7 @@ from nonebot.adapters.onebot.v11 import (
 
 import nonebot
 import asyncio
+import random
 
 from .utils import *
 from .config import Config
@@ -39,26 +41,45 @@ if leaf.leaf_permission == "GROUP":
 else:
     permission = None
 
-# 优先级99，条件：艾特bot就触发
+# 优先级99，条件：艾特bot就触发(改为不需at, 即处理所有消息)
 
 if reply_type > -1:
-    ai = on_message(rule = to_me(), permission = permission, priority=99, block=False)
+    ai = on_message(permission = permission, priority=99, block=False)
 
     @ai.handle()
     async def _(event: MessageEvent):
         # 获取消息文本
+        Is_Reply = 0
+        Is_text=event.get_message().extract_plain_text()
         msg = str(event.get_message())
+
+        random_int = random.randint(0,100)
+        if random_int<30:
+           Is_Reply=1
+
+        if "领导" in msg and Is_Reply==1:
+            await ai.finish(Message("哈哈, 你这傻逼是不是还没下班"),at_sender=True)
+
+        if "？" in msg and len(msg)==1 and Is_Reply==1:
+            await ai.finish(Message("¿"),at_sender=True)
+
+        if "at" in msg and Is_Reply==1:
+            await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
+
+        if (len(Is_text)) == 0 and Is_Reply==1:
+           await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
+
+        
+        
         # 去掉带中括号的内容(去除cq码)
         msg = re.sub(r"\[.*?\]", "", msg)
         # 如果是光艾特bot(没消息返回)，就回复以下内容
-        if (not msg) or msg.isspace():
-            if reply_type > 1:
-                await ai.finish(Message(random.choice(hello__reply)))
-            else:
-                await ai.finish()
+        if ((not msg) or msg.isspace()) and Is_Reply==1:
+            await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
+
         # 如果是打招呼的话，就回复以下内容
-        if  msg in hello__bot:
-            await ai.finish(Message(random.choice(hello__reply)))
+       
+        
         # 如果是已配置的忽略项，直接结束事件
         for i in range(len(ignore)):
             if msg.startswith(ignore[i]):
@@ -84,8 +105,7 @@ if reply_type > -1:
         if result != None:
             await ai.finish(Message(result))
         # 随机回复cant__reply的内容
-        if reply_type > 0:
-            await ai.finish(Message(random.choice(cant__reply)))
+        
 
 # 优先级10，不会向下阻断，条件：戳一戳bot触发
 
