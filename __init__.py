@@ -13,7 +13,8 @@ from nonebot.adapters.onebot.v11 import (
 import nonebot
 import asyncio
 import random
-
+import pathlib
+import os
 from .utils import *
 from .config import Config
 
@@ -41,8 +42,11 @@ if leaf.leaf_permission == "GROUP":
 else:
     permission = None
 
-# 优先级99，条件：艾特bot就触发(改为不需at, 即处理所有消息)
+#获取表情包路径
+img_path = os.path.join(os.path.dirname(__file__), "龙")
+all_file_name = os.listdir(img_path)
 
+# 优先级99，条件：艾特bot就触发(改为不需at, 即处理所有消息)
 if reply_type > -1:
     ai = on_message(permission = permission, priority=99, block=False)
 
@@ -50,15 +54,28 @@ if reply_type > -1:
     async def _(event: MessageEvent):
         # 获取消息文本
         Is_Reply = 0
+        Is_long_img=0
         Is_text=event.get_message().extract_plain_text()
         msg = str(event.get_message())
 
-        random_int = random.randint(0,100)
-        if random_int<30:
+        random_int1= random.randint(0,100)
+        random_int2= random.randint(0,100)
+        logger.info(f"本次生成的随机数1的值为: {random_int1}")
+        logger.info(f"本次生成的随机数2的值为: {random_int2}")
+        
+        if random_int1<15:
            Is_Reply=1
+
+        if random_int2<7:
+           Is_long_img=1
 
         if "领导" in msg and Is_Reply==1:
             await ai.finish(Message("哈哈, 你这傻逼是不是还没下班"),at_sender=True)
+
+        if "老婆" in msg and Is_Reply==1:
+            await ai.finish(Message("哈哈, 你这傻逼怎么整天在网上叫别人老婆, 现实里没有老婆吗"),at_sender=True)
+            #await ai.finish(MessageSegment.image())
+         
 
         if "？" in msg and len(msg)==1 and Is_Reply==1:
             await ai.finish(Message("¿"),at_sender=True)
@@ -69,8 +86,11 @@ if reply_type > -1:
         if (len(Is_text)) == 0 and Is_Reply==1:
            await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
 
-        
-        
+        if Is_long_img==1:
+           img_name = random.choice(all_file_name)
+           img = Path(img_path) / img_name
+           await ai.finish(MessageSegment.image(img),at_sender=True) #发送表情
+
         # 去掉带中括号的内容(去除cq码)
         msg = re.sub(r"\[.*?\]", "", msg)
         # 如果是光艾特bot(没消息返回)，就回复以下内容
