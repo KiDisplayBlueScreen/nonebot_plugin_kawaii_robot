@@ -1,6 +1,7 @@
 from nonebot.plugin.on import on_message,on_notice
 from nonebot.rule import to_me
 from nonebot.log import logger
+from bs4 import BeautifulSoup
 from nonebot.adapters.onebot.v11 import (
     GROUP,
     GroupMessageEvent,
@@ -14,7 +15,11 @@ import nonebot
 import asyncio
 import random
 import pathlib
+import re
 import os
+from PIL import Image
+from io import BytesIO
+import requests
 from .utils import *
 from .config import Config
 
@@ -57,17 +62,22 @@ if reply_type > -1:
         Is_long_img=0
         Is_text=event.get_message().extract_plain_text()
         msg = str(event.get_message())
+        #MsgType = event.get_type()
+
 
         random_int1= random.randint(0,100)
         random_int2= random.randint(0,100)
         logger.info(f"本次生成的随机数1的值为: {random_int1}")
         logger.info(f"本次生成的随机数2的值为: {random_int2}")
+        #logger.info(f"The Msg is {msg}")
         
-        if random_int1<15:
+        if random_int1<10:
            Is_Reply=1
 
         if random_int2<7:
            Is_long_img=1
+
+        
 
         if "领导" in msg and Is_Reply==1:
             await ai.finish(Message("哈哈, 你这傻逼是不是还没下班"),at_sender=True)
@@ -80,8 +90,17 @@ if reply_type > -1:
         if "？" in msg and len(msg)==1 and Is_Reply==1:
             await ai.finish(Message("¿"),at_sender=True)
 
-        if "at" in msg and Is_Reply==1:
-            await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
+        if "CQ:image" in msg and Is_Reply==1:  #图片消息
+            pattern = r'url=([^]]+)'
+            IsMatch = re.search(pattern, msg)
+            ImgURL = IsMatch.group(1) #获取图片URL
+            response = requests.get(ImgURL) #获取图片内容
+            img = Image.open(BytesIO(response.content))
+            width, height = img.size
+            if width<1000 and height <1000: #粗略判断是否为表情包
+                await ai.finish(Message(random.choice(Sticker_reply)),at_sender=True)
+            else:
+             await ai.finish(Message(random.choice(Img_reply)),at_sender=True)
 
         if (len(Is_text)) == 0 and Is_Reply==1:
            await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
