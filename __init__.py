@@ -62,6 +62,8 @@ if reply_type > -1:
         Is_long_img=0
         Is_text=event.get_message().extract_plain_text()
         msg = str(event.get_message())
+        TempName = "temp.jpg"
+        #GroupID = event.get_session_id()
         #MsgType = event.get_type()
 
 
@@ -69,6 +71,7 @@ if reply_type > -1:
         random_int2= random.randint(0,100)
         logger.info(f"本次生成的随机数1的值为: {random_int1}")
         logger.info(f"本次生成的随机数2的值为: {random_int2}")
+        #logger.info(f"会话ID: {GroupID}")
         #logger.info(f"The Msg is {msg}")
         
         if random_int1<10:
@@ -77,7 +80,17 @@ if reply_type > -1:
         if random_int2<7:
            Is_long_img=1
 
-        
+        # 如果是已配置的忽略项，直接结束事件
+        for i in range(len(ignore)):
+            if msg.startswith(ignore[i]):
+                await ai.finish()
+
+        if "空调" in msg:
+            AirconPath = Path(img_path) / "吹空调.gif"
+            await ai.finish(MessageSegment.image(AirconPath))
+
+        if "早" in msg and len(msg)>4:
+            await ai.finish()
 
         if "领导" in msg and Is_Reply==1:
             await ai.finish(Message("哈哈, 你这傻逼是不是还没下班"),at_sender=True)
@@ -95,9 +108,15 @@ if reply_type > -1:
             IsMatch = re.search(pattern, msg)
             ImgURL = IsMatch.group(1) #获取图片URL
             response = requests.get(ImgURL) #获取图片内容
+            with open(TempName,"wb") as f:
+                    f.write(response.content)
             img = Image.open(BytesIO(response.content))
+            SizeInKB = os.path.getsize(TempName)/1024
             width, height = img.size
-            if width<1000 and height <1000: #粗略判断是否为表情包
+            logger.info(f"图片大小: {SizeInKB}KB")
+            os.remove(TempName)
+
+            if (width<900 and height <900) or SizeInKB <100: #粗略判断是否为表情包
                 await ai.finish(Message(random.choice(Sticker_reply)),at_sender=True)
             else:
              await ai.finish(Message(random.choice(Img_reply)),at_sender=True)
@@ -119,10 +138,8 @@ if reply_type > -1:
         # 如果是打招呼的话，就回复以下内容
        
         
-        # 如果是已配置的忽略项，直接结束事件
-        for i in range(len(ignore)):
-            if msg.startswith(ignore[i]):
-                await ai.finish()
+       
+        
         # 获取用户nickname
         if isinstance(event, GroupMessageEvent):
             nickname = event.sender.card or event.sender.nickname
