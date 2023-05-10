@@ -1,6 +1,12 @@
+from cmath import log
 from nonebot.plugin.on import on_message,on_notice
+from nonebot.adapters import Bot as BaseBot
+from nonebot.message import event_postprocessor
+import time,datetime,json
 from nonebot.rule import to_me
 from nonebot.log import logger
+from apscheduler.triggers.interval import IntervalTrigger
+from nonebot import require
 from bs4 import BeautifulSoup
 from nonebot.adapters.onebot.v11 import (
     GROUP,
@@ -9,8 +15,9 @@ from nonebot.adapters.onebot.v11 import (
     MessageEvent,
     MessageSegment,
     PokeNotifyEvent,
+    Bot,
 )
-
+from typing import Any, Dict, Optional
 import nonebot
 import asyncio
 import random
@@ -50,34 +57,71 @@ else:
 #获取表情包路径
 img_path = os.path.join(os.path.dirname(__file__), "龙")
 all_file_name = os.listdir(img_path)
+require("nonebot_plugin_apscheduler")
+from nonebot_plugin_apscheduler import scheduler
+
+
+Trigger = IntervalTrigger(minutes=1,jitter=10)
+scheduler.add_job(func=Check,trigger=Trigger)
+
+
+
+
+@Bot.on_called_api
+async def record_send_msg_v11(
+        bot: BaseBot,
+        e: Optional[Exception],
+        api: str,
+        data: Dict[str, Any],
+        result: Optional[Dict[str, Any]],
+    ):
+        if e or not result:
+            return
+        if api not in ["send_msg", "send_private_msg", "send_group_msg"]:
+            return
+        #message_id=str(result["message_id"])
+        GroupID=str(data.get("group_id", "")) #获取机器人发送消息的群ID
+        #logger.info(f"msg_id: {message_id}")
+        SendTime = datetime.datetime.now().replace(microsecond=0)
+        SendTime_str = SendTime.strftime("%Y-%m-%d %H:%M:%S")
+        await LastSendTimeRecord(GroupID,SendTime_str)
+        #logger.info(f"msg_id: {group_id}")
+        #logger.info(f"Sendtime: {SendTime}")
+
 
 # 优先级99，条件：艾特bot就触发(改为不需at, 即处理所有消息)
 if reply_type > -1:
     ai = on_message(permission = permission, priority=99, block=False)
 
     @ai.handle()
-    async def _(event: MessageEvent):
+    async def _(bot: Bot,event: MessageEvent):
         # 获取消息文本
         Is_Reply = 0
         Is_long_img=0
         Is_text=event.get_message().extract_plain_text()
+        
         msg = str(event.get_message())
         TempName = "temp.jpg"
-        #GroupID = event.get_session_id()
-        #MsgType = event.get_type()
-
+        SessionID = event.get_session_id()
+        parts = SessionID.split("_")
+        GroupID = parts[1]
+        UserID = parts[2]
 
         random_int1= random.randint(0,100)
         random_int2= random.randint(0,100)
         logger.info(f"本次生成的随机数1的值为: {random_int1}")
         logger.info(f"本次生成的随机数2的值为: {random_int2}")
-        #logger.info(f"会话ID: {GroupID}")
+        #logger.info(f"Last_msg: {event.message_id}")
+        tid = datetime.datetime.fromtimestamp(event.time)
+        time = tid.strftime('%Y-%m-%d %H:%M:%S')
+        #logger.info(f"Last_msg_time: {time}")
+        #logger.info(f"来自群: {GroupID}")
         #logger.info(f"The Msg is {msg}")
         
-        if random_int1<10:
+        if random_int1<5:
            Is_Reply=1
 
-        if random_int2<7:
+        if random_int2<4 and (GroupID in Target_Group):
            Is_long_img=1
 
         # 如果是已配置的忽略项，直接结束事件
@@ -89,11 +133,15 @@ if reply_type > -1:
             AirconPath = Path(img_path) / "吹空调.gif"
             await ai.finish(MessageSegment.image(AirconPath))
 
+
         if "早" in msg and len(msg)>4:
             await ai.finish()
 
         if "领导" in msg and Is_Reply==1:
             await ai.finish(Message("哈哈, 你这傻逼是不是还没下班"),at_sender=True)
+
+        if ("星铁" in msg or "星穹铁道" in msg) and len(msg)>=4:
+            await ai.finish(Message(random.choice(Star_Rail_Reply)),reply_message=True)
 
         if "老婆" in msg and Is_Reply==1:
             await ai.finish(Message("哈哈, 你这傻逼怎么整天在网上叫别人老婆, 现实里没有老婆吗"),at_sender=True)
@@ -116,8 +164,8 @@ if reply_type > -1:
             logger.info(f"图片大小: {SizeInKB}KB")
             os.remove(TempName)
 
-            if (width<900 and height <900) or SizeInKB <100: #粗略判断是否为表情包
-                await ai.finish(Message(random.choice(Sticker_reply)),at_sender=True)
+            if ((width<900 and height <900) or SizeInKB <100) and (GroupID in Target_Group): #粗略判断是否为表情包
+                await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
             else:
              await ai.finish(Message(random.choice(Img_reply)),at_sender=True)
 
@@ -154,13 +202,13 @@ if reply_type > -1:
             await ai.finish(Message(result))
         # 从LeafThesaurus里获取结果
         result = await get_chat_result_leaf(msg,  nickname)
-        if result != None:
-            await ai.finish(Message(result))
+        if result != None and Is_Reply==1:
+            await ai.finish(Message(result),reply_message=True)
         # 从AnimeThesaurus里获取结果
         result = await get_chat_result(msg,  nickname)
         if result != None:
-            await ai.finish(Message(result))
-        # 随机回复cant__reply的内容
+            await ai.finish(Message(result),reply_message=True) #reply_message控制是否回复消息
+        await LastSendTimeRecord(GroupID,time)
         
 
 # 优先级10，不会向下阻断，条件：戳一戳bot触发
