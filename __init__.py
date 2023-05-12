@@ -92,7 +92,7 @@ async def Recall_handle(bot:Bot, event: GroupRecallNoticeEvent):
 
               if IO_sticker:
                   await Recall.send(message=Text_to_send1+MessageSegment.image(IO_sticker)+Text_to_send2)
-
+                  os.remove(Avatar_FileName)
               
 
 @Bot.on_called_api
