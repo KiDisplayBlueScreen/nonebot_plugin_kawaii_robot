@@ -1,24 +1,10 @@
 # -*- coding: utf-8 -*-
 from lib2to3.pgen2.token import AWAIT
-from unittest import result
-from nonebot import get_driver, on_command, on_notice
-from nonebot import on_command, on_fullmatch, on_keyword, on_message
 from nonebot.log import logger
 import requests
 import pathlib
 import re
 import os
-import asyncio
-from nonebot.internal.adapter import Bot as BaseBot
-from nonebot.adapters.onebot.v11 import (
-    Bot,
-    Message,
-    Event,
-    MessageEvent,
-    GroupMessageEvent,
-    GroupRecallNoticeEvent,
-    PrivateMessageEvent,
-)
 import asyncio
 from meme_generator import get_meme
 from typing import List
