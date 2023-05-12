@@ -49,14 +49,4 @@ async def StickerGen(image: List[str],text:List[str],name:str):
                 except Exception as e:
                     logger.info(f"创建表情失败: {e}")
                 return result
-                """
-                file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'result.gif'))
-                try:
-                 with open(file_path, "wb") as f:
-                        f.write(result.getvalue())
-                        os.remove(image[0])
-                except Exception as e:
-                         logger.info(f"创建表情失败: {e}")
-                         return 0
-                return 1
-                """
+                
