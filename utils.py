@@ -2,6 +2,7 @@ import os
 import re
 import random
 import nonebot
+import time,datetime
 
 try:
     import ujson as json
@@ -12,12 +13,15 @@ from httpx import AsyncClient
 from pathlib import Path
 from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.log import logger
+from nonebot.adapters import Bot
+from nonebot import get_bot
 
 Bot_NICKNAME: str = list(nonebot.get_driver().config.nickname)[0]      # bot的nickname,可以换成你自己的
 Bot_MASTER: str = list(nonebot.get_driver().config.superusers)[0]      # bot的主人名称,也可以换成你自己的     
 
 path = os.path.join(os.path.dirname(__file__), "resource")
-
+img_path = os.path.join(os.path.dirname(__file__), "龙")
+StickerPath = Path(img_path) / "620.png"
 # 载入个人词库
 lst = os.listdir(Path(path))
 lst.remove("leaf.json")
@@ -96,6 +100,8 @@ poke__reply = [
 
 Star_Rail_Reply = ["最新通知:4月26日，米哈游新作《崩坏：星穹铁道》（以下简称《星铁》）正式公测，本群要求所有人将电脑上的steam、Origin、Epic等游戏平台卸载，并于4月26日前下载并安装《星铁》，4月26日后将安排专人对电脑进行检查，收到请回复\r\n 1.本群非星铁玩家跟星铁玩家说话前要添加敬语 \r\n 2.本群星铁玩家对话途中非星铁玩家不允许插嘴\r\n 3.非星铁玩家每天早晚都要向本群星铁玩家问好\r\n 4.非星铁玩家发言控制在14字以内，必须打标点符号，不允许出现猴语录，不允许使用QQ第一排以下的表情\r\n 5.非星铁玩家不允许发表情包 \r\n6.非星铁玩家发图或语音必须征得星铁玩家同意 \r\n7.非星铁玩家一天只能发10句话，超过必禁\r\n 8.22:00后对非星铁玩家实行宵禁",
                               "中国人不开比亚迪,可以理解，毕竟不是一般人能买得起\r\n中国人不用华为,也可以理解,毕竟华为也不算便宜\r\n但是中国人不玩星穹铁道就很难理解了。口口声声说爱国,但是面对目前世界最顶尖的国产3A游戏。就算零氪给国产游戏流量这种举手之劳都不愿意如果连玩星穹铁辑这种无成本的爱国都拒绝,那就是汉奸"]
+Long_time_noreply=["死群了","怎么没人了 都去玩原神还是操大B了","怎么没人了 都去玩原神还是操大B了?求求你们不要再操大B了, 我过得再苦再穷都不会难过, 只有一想到你们都在操大B的时候, 我的心就像被刀割一样疼, 一边打字一边泪水就忍不住往下流"]
+
 Target_Group=[]
 
 # 不明白的消息
@@ -208,4 +214,28 @@ async def LastSendTimeRecord(GroupID, LastSendTime):
         return 1
 
 async def Check():
-    logger.info(f"测试消息")
+  with open('Last_Send.json') as f:
+    data = json.load(f)
+    now = datetime.datetime.now()
+    if now.hour<=9:
+        return 0
+# 遍历每个GroupID和对应的LastSendTime
+    bot:Bot = get_bot()
+  for GroupID, values in data.items():
+    LastSendTime_str = values["LastSendTime"]
+    
+    # 将LastSendTime字符串转换为datetime对象
+    LastSendTime = datetime.datetime.strptime(LastSendTime_str, "%Y-%m-%d %H:%M:%S")
+    # 计算当前系统时间和LastSendTime之间的时间差
+    time_diff = now - LastSendTime
+    
+    if time_diff.total_seconds() > 3600 and GroupID in Target_Group:
+        #logger.info(f"{GroupID}: {LastSendTime_str} > 30 minutes")
+        try: 
+            await bot.send_group_msg(group_id=GroupID,message=random.choice(Long_time_noreply))
+        except Exception as e:
+            logger.info(f"可能被禁言: {e}")
+    else:
+        logger.info(f"{GroupID}: {LastSendTime_str} < 60 minutes")
+  return  0       
+# 返回1或执行其他操作
