@@ -15,6 +15,7 @@ from nonebot.adapters.onebot.v11 import (
     MessageEvent,
     MessageSegment,
     PokeNotifyEvent,
+    GroupRecallNoticeEvent,
     Bot,
 )
 from typing import Any, Dict, Optional
@@ -29,6 +30,7 @@ from io import BytesIO
 import requests
 from .utils import *
 from .config import Config
+from .AntiRecall import *
 
 # 加载全局配置
 global_config = nonebot.get_driver().config
@@ -61,11 +63,37 @@ require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 
 
-Trigger = IntervalTrigger(minutes=1,jitter=10)
-scheduler.add_job(func=Check,trigger=Trigger)
+Trigger = IntervalTrigger(minutes=30,jitter=10)
+scheduler.add_job(func=Check,trigger=Trigger)  #添加一个定时任务, 到时间后执行func的函数
 
+Recall = on_notice()
+@Recall.handle()
+async def Recall_handle(bot:Bot, event: GroupRecallNoticeEvent):
+          if str(event.user_id) != str(bot.self_id):
+              mid = event.message_id
+              gid = event.group_id
+              uid = event.user_id  #被撤回人Q号
+              oid = event.operator_id   #撤回人Q号
+              userinfo = await bot.get_group_member_info(group_id = gid, user_id = uid)
+              Nickname=userinfo['nickname']
+              #logger.info(f"username:{Nickname}")
+              SelfRecall = 0
+              Text_to_send1 = "哦~有人撤回了他的消息, 让我来看看他说了什么:"
+              Text_to_send2 ="\r\n天哪 这也太~劲爆了⑧~怪不得要撤回呢♥"
+              Text_to_MakeSticker = ["唉怀孕了","怎么办"]
+              Text_to_MakeSticker2 = ["管理员被我干怀孕了"]
+              Avatar_FileName=await GetAvatar(str(uid))
+              ImageList = [Avatar_FileName]
+              if uid!=oid:
+                 Text_to_send1="唉~管理员又在撤回别人的消息了,权蛆真的是~让我来看看他说了什么:"
+                 IO_sticker = await StickerGen(ImageList,Text_to_MakeSticker2,Nickname)
+              else:
+                 IO_sticker = await StickerGen(ImageList,Text_to_MakeSticker,Nickname)
 
+              if IO_sticker:
+                  await Recall.send(message=Text_to_send1+MessageSegment.image(IO_sticker)+Text_to_send2)
 
+              
 
 @Bot.on_called_api
 async def record_send_msg_v11(
@@ -131,6 +159,9 @@ if reply_type > -1:
 
         if "空调" in msg:
             AirconPath = Path(img_path) / "吹空调.gif"
+            #user ='3041298773'
+            #at_ = "[CQ:at,qq={}]".format(user)
+            #await bot.send_group_msg(group_id=GroupID,message=at_)
             await ai.finish(MessageSegment.image(AirconPath))
 
 
@@ -182,7 +213,7 @@ if reply_type > -1:
         # 如果是光艾特bot(没消息返回)，就回复以下内容
         if ((not msg) or msg.isspace()) and Is_Reply==1:
             await ai.finish(Message(random.choice(hello__reply)),at_sender=True)
-
+            
         # 如果是打招呼的话，就回复以下内容
        
         
