@@ -192,23 +192,26 @@ async def Check():
     if len(GroupList)!=0:
        for i in range(len(GroupList)):
           try:
+             if str(GroupList[i]) not in Target_Group:
+                 continue
              MsgHis = await bot.call_api('get_group_msg_history', group_id=GroupList[i], message_seq=None)
           except Exception as e:
             logger.info(f"获取群历史消息失败: {e}")
-          time = MsgHis['messages'][19]['time']
+          time = MsgHis['messages'][-1]['time']
           LastSendTime = datetime.datetime.fromtimestamp(time)
           time_diff = now - LastSendTime
           if time_diff.total_seconds() > 3600 and str(GroupList[i]) in Target_Group:
         #logger.info(f"{GroupID}: {LastSendTime_str} > 30 minutes")
            try: 
             await bot.send_group_msg(group_id=GroupList[i],message=random.choice(Long_time_noreply))
+            await asyncio.sleep(4)
+            continue
            except Exception as e:
             logger.info(f"可能被禁言: {e}")
-            await asyncio.sleep(4)
+            await asyncio.sleep(1)
             continue
           else:
               logger.info(f"{GroupList[i]}: {LastSendTime} < 60 minutes")
-              await asyncio.sleep(4)
               continue
-          return  0
+       return  0
 
