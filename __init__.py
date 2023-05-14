@@ -1,5 +1,5 @@
 from cmath import log
-from nonebot.plugin.on import on_message,on_notice
+from nonebot.plugin.on import on_message,on_notice,on,on_command
 from nonebot.adapters import Bot as BaseBot
 from nonebot.message import event_postprocessor
 import time,datetime,json
@@ -43,7 +43,7 @@ repeater_limit = leaf.leaf_repeater_limit
 interrupt = leaf.leaf_interrupt
 
 ignore = leaf.leaf_ignore
-
+group_list=[]
 # 配置合法检测
 
 if repeater_limit[0] < 2 or repeater_limit[0] > repeater_limit[1]:
@@ -74,6 +74,8 @@ async def Recall_handle(bot:Bot, event: GroupRecallNoticeEvent):
               gid = event.group_id
               uid = event.user_id  #被撤回人Q号
               oid = event.operator_id   #撤回人Q号
+              if uid == oid and uid in Bot_QID:
+                 await Recall.finish()
               userinfo = await bot.get_group_member_info(group_id = gid, user_id = uid)
               Nickname=userinfo['nickname']
               #logger.info(f"username:{Nickname}")
@@ -91,30 +93,28 @@ async def Recall_handle(bot:Bot, event: GroupRecallNoticeEvent):
                  IO_sticker = await StickerGen(ImageList,Text_to_MakeSticker,Nickname)
 
               if IO_sticker:
-                  await Recall.send(message=Text_to_send1+MessageSegment.image(IO_sticker)+Text_to_send2)
                   os.remove(Avatar_FileName)
-              
+                  try:
+                    await Recall.send(message=Text_to_send1+MessageSegment.image(IO_sticker)+Text_to_send2)
+                  except Exception as e:
+                    logger.info(f"被禁言可能性微存: {e}")
+                 
 
-@Bot.on_called_api
-async def record_send_msg_v11(
-        bot: BaseBot,
-        e: Optional[Exception],
-        api: str,
-        data: Dict[str, Any],
-        result: Optional[Dict[str, Any]],
-    ):
-        if e or not result:
-            return
-        if api not in ["send_msg", "send_private_msg", "send_group_msg"]:
-            return
-        #message_id=str(result["message_id"])
-        GroupID=str(data.get("group_id", "")) #获取机器人发送消息的群ID
-        #logger.info(f"msg_id: {message_id}")
-        SendTime = datetime.datetime.now().replace(microsecond=0)
-        SendTime_str = SendTime.strftime("%Y-%m-%d %H:%M:%S")
-        await LastSendTimeRecord(GroupID,SendTime_str)
-        #logger.info(f"msg_id: {group_id}")
-        #logger.info(f"Sendtime: {SendTime}")
+            
+
+CommandTest = on_command("test",aliases={"测试"},priority=1,block=False)
+@CommandTest.handle()
+async def TestHandle(bot: Bot, event: GroupMessageEvent):
+                #logger.info(f"收到测试指令")
+                res = await bot.call_api('get_group_list', no_cache=True)
+                group_list= [d['group_id'] for d in res]
+                MsgHis = await bot.call_api('get_group_msg_history', group_id=group_list[0], message_seq=None)
+                #Data_dict = json.loads(MsgHis)
+                time =MsgHis['messages'][19]['time']
+                dt = datetime.datetime.fromtimestamp(time)
+                #logger.info(f"群列表: {group_list}")
+                logger.info(f"历史消息: {MsgHis}")
+                logger.info(f"历史消息时间: {dt}")
 
 
 # 优先级99，条件：艾特bot就触发(改为不需at, 即处理所有消息)
@@ -159,7 +159,7 @@ if reply_type > -1:
 
         if "空调" in msg:
             AirconPath = Path(img_path) / "吹空调.gif"
-            #user ='3041298773'
+            #user =''
             #at_ = "[CQ:at,qq={}]".format(user)
             #await bot.send_group_msg(group_id=GroupID,message=at_)
             await ai.finish(MessageSegment.image(AirconPath))
@@ -239,7 +239,7 @@ if reply_type > -1:
         result = await get_chat_result(msg,  nickname)
         if result != None:
             await ai.finish(Message(result),reply_message=True) #reply_message控制是否回复消息
-        await LastSendTimeRecord(GroupID,time)
+        #await LastSendTimeRecord(GroupID,time)
         
 
 # 优先级10，不会向下阻断，条件：戳一戳bot触发
