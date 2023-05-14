@@ -181,8 +181,6 @@ def messagePreprocess(msg: Message):
 
 
 async def Check():
-  #with open('Last_Send.json') as f:
-    #data = json.load(f)
     now = datetime.datetime.now()
     if now.hour<=9:
         return 0
