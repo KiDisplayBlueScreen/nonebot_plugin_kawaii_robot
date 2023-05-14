@@ -15,6 +15,7 @@ from nonebot.adapters.onebot.v11 import Message, MessageSegment
 from nonebot.log import logger
 from nonebot.adapters import Bot
 from nonebot import get_bot
+import asyncio
 
 Bot_NICKNAME: str = list(nonebot.get_driver().config.nickname)[0]      # bot的nickname,可以换成你自己的
 Bot_MASTER: str = list(nonebot.get_driver().config.superusers)[0]      # bot的主人名称,也可以换成你自己的     
@@ -85,6 +86,7 @@ hello__reply = [
       "好好滴伺候, 老爷有赏啊",
       "在?借点钱充原神",
       "哈哈, 傻逼们聊了这么多啊, 刚刚玩原神晕过去了现在才醒",
+      "退QQ了 出自己的账号 号上有15个极品脑残 17个龙图贵物 3个原批 9个南通 已经经营过感情了 看到你说话会直接开始发龙图",
       "群主强调，振兴米哈游要做好“四批一体化”工作，落实好绝区零预下载这一任务，建成以高等级高练度铁道玩家及绝区测试玩家为中心的小组网络，各小组组长做好对组内成员原崩铁绝下载及游玩情况的调查，督促组内成员尽快下载崩原铁绝，加快“崩到原，原到铁，铁到绝”这一进程，深化改革本群结构，将本群改造为一个以重度米哈游玩家为主体的QQ群",
       "对不起，其实，我是二次元\r\n每天至少亲吻三次我的手机，不是因为我恋物，而是我对于爱的痴迷\r\n我看着扁平的手机，不立体的角色却映出来立体的感情\r\n每当我看见纸片人物，我的心就像潮水一般奔涌\r\n我不清楚这是不是爱，但我清楚的感受到，我的心在跳动\r\n起初，我很讨厌二次元，但自从我看过了以后，我才发现，我在骗自己，这是一种谎言，对于爱的谎言\r\n我必须面对自己，我控制住自己的言语，却控制不住自己的身体和情绪，所以我胶如涌泉的渲泄在纸片小人的身上，这一刻，我感受到充实\r\n我太爱二次元了，所以我模仿着二次元女孩娇滴滴的说话方式，仿佛我也是一个可爱的二次元女孩，但我呢，我只是一个高中生，我被压力压得走不动道，只有，在二次元中，我如飞鸟一般自由\r\n 我不怕你们笑话，其实，我是二次元",
       "吶吶吶，米娜桑，扣祢起哇，瓦込西二刺猿の焼酒desu!あああ，让我们①起守択，最好の二刺猿肥!吶吶，不憧我的，愚蠢の人炎們呵，果畔那塞，我二刺猿の焼酒是不会和祢有共同語言的jio豆麻袋,込祥子垪活有什幺錯喝?吶,告泝我呵。搜嚆,祢仞已経不喜炊了呵..真是冷酷の人昵,果鮮納塞,止祢看到不愉快のな西了。像我送祥的人,果然消失就好了昵。也午只有在二次元的世界里,オ有真正的美好存在的肥,吶?ねぇねぇねぇ，果然灰悪了呵，帯jio不，瓦込西，二刺猿の焼酒!博古哇zeidei不会人輸!米娜桑!吶!瓦込西二刺猿ぁぁ!哦晦吻扣賽伊弓斯!吶吶吶!米娜桑!我要幵劫了~一キ打去咢死!诶多诶多~「多洗忒」?为什么要「妄.图.抹.杀」这样的「自己」呢?★(笑)呐、「中二病的你」也好、「二次元的你」也好....「全部」daisuki~呐~二次元民那赛高desuwa!今后也.请.多.多.指.教.喔?~啊啊……是♡鲜♡血♡の♡味♡道♡呐♡~！（眯眼笑）kukuku——汝の「血」、会是什么样的「气味」呢☆？诶多多~说着说着有些期待了呢♪品尝「挚·爱·之·人」の「鲜血」什么的~嘛……如果是「你」的话，一定可以的!"
@@ -103,6 +105,7 @@ Star_Rail_Reply = ["最新通知:4月26日，米哈游新作《崩坏：星穹�
 Long_time_noreply=["死群了","怎么没人了 都去玩原神还是操大B了","怎么没人了 都去玩原神还是操大B了?求求你们不要再操大B了, 我过得再苦再穷都不会难过, 只有一想到你们都在操大B的时候, 我的心就像被刀割一样疼, 一边打字一边泪水就忍不住往下流"]
 
 Target_Group=[]
+GroupList=[]
 
 # 不明白的消息
 cant__reply = [
@@ -176,66 +179,38 @@ def messagePreprocess(msg: Message):
                 return x
     return msg
 
-async def LastSendTimeRecord(GroupID, LastSendTime):
-   #logger.info(f"Last_msg_time: {LastSendTime}")
-   if not GroupID or len(GroupID) == 0:
-       logger.info(f"GroupID为0")
-       return 0
-   if not LastSendTime or len(LastSendTime)== 0:
-       logger.info(f"LastSendTime为0")
-       return 0
-    # 检查Last_Send.json是否存在并为空
-    
-   if not os.path.isfile("Last_Send.json") or os.stat("Last_Send.json").st_size == 0:
-        data = {}
-   else:
-        # 读取Last_Send.json中的内容数据
-        with open("Last_Send.json", "r") as f:
-            json_str = f.read()
-        # 将json字符串转换为字典
-        data = json.loads(json_str)
-       # logger.info(f"data: {data}")
-    # 检查GroupID是否已经存在
-   if GroupID in data:
-        # 如果存在则更新LastSendTime的值
-        data[GroupID]["LastSendTime"] = LastSendTime
-        logger.info(f"LastSendTime更新成功")
-   else:
-        # 如果不存在则追加
-        data[GroupID] = {"LastSendTime": LastSendTime}
-        # 将字典转换为json字符串
-       
-    # 将json字符串写回Last_Send.json中
-   json_str = json.dumps(data,indent=4)
-   #logger.info(f"data: {json_str}")
-   with open("Last_Send.json", "w") as f:
-        f.write(json_str)
-        f.close()
-        return 1
 
 async def Check():
-  with open('Last_Send.json') as f:
-    data = json.load(f)
+  #with open('Last_Send.json') as f:
+    #data = json.load(f)
     now = datetime.datetime.now()
     if now.hour<=9:
         return 0
 # 遍历每个GroupID和对应的LastSendTime
     bot:Bot = get_bot()
-  for GroupID, values in data.items():
-    LastSendTime_str = values["LastSendTime"]
-    
-    # 将LastSendTime字符串转换为datetime对象
-    LastSendTime = datetime.datetime.strptime(LastSendTime_str, "%Y-%m-%d %H:%M:%S")
-    # 计算当前系统时间和LastSendTime之间的时间差
-    time_diff = now - LastSendTime
-    
-    if time_diff.total_seconds() > 3600 and GroupID in Target_Group:
+    res = await bot.call_api('get_group_list', no_cache=True)
+    GroupList = [d['group_id'] for d in res]
+
+    if len(GroupList)!=0:
+       for i in range(len(GroupList)):
+          try:
+             MsgHis = await bot.call_api('get_group_msg_history', group_id=GroupList[i], message_seq=None)
+          except Exception as e:
+            logger.info(f"获取群历史消息失败: {e}")
+          time = MsgHis['messages'][19]['time']
+          LastSendTime = datetime.datetime.fromtimestamp(time)
+          time_diff = now - LastSendTime
+          if time_diff.total_seconds() > 3600 and str(GroupList[i]) in Target_Group:
         #logger.info(f"{GroupID}: {LastSendTime_str} > 30 minutes")
-        try: 
-            await bot.send_group_msg(group_id=GroupID,message=random.choice(Long_time_noreply))
-        except Exception as e:
+           try: 
+            await bot.send_group_msg(group_id=GroupList[i],message=random.choice(Long_time_noreply))
+           except Exception as e:
             logger.info(f"可能被禁言: {e}")
-    else:
-        logger.info(f"{GroupID}: {LastSendTime_str} < 60 minutes")
-  return  0       
-# 返回1或执行其他操作
+            await asyncio.sleep(4)
+            continue
+          else:
+              logger.info(f"{GroupList[i]}: {LastSendTime} < 60 minutes")
+              await asyncio.sleep(4)
+              continue
+          return  0
+
