@@ -16,6 +16,7 @@ from nonebot.adapters.onebot.v11 import (
     MessageSegment,
     PokeNotifyEvent,
     GroupRecallNoticeEvent,
+    GroupIncreaseNoticeEvent,
     Bot,
 )
 from typing import Any, Dict, Optional
@@ -81,7 +82,7 @@ async def Recall_handle(bot:Bot, event: GroupRecallNoticeEvent):
               #logger.info(f"username:{Nickname}")
               SelfRecall = 0
               Text_to_send1 = "哦~有人撤回了他的消息, 让我来看看他说了什么:"
-              Text_to_send2 ="\r\n天哪 这也太~劲爆了⑧~怪不得要撤回呢♥"
+              Text_to_send2 ="\r\n天哪 这也太~劲爆了⑧~怪不得要撤回呢♥让我们为他献上衷心的祝福~†升天†"
               Text_to_MakeSticker = ["唉怀孕了","怎么办"]
               Text_to_MakeSticker2 = ["管理员被我干怀孕了"]
               Avatar_FileName=await GetAvatar(str(uid))
@@ -98,9 +99,17 @@ async def Recall_handle(bot:Bot, event: GroupRecallNoticeEvent):
                     await Recall.send(message=Text_to_send1+MessageSegment.image(IO_sticker)+Text_to_send2)
                   except Exception as e:
                     logger.info(f"被禁言可能性微存: {e}")
-                 
-
-            
+                               
+notice_handle = on_notice(priority=5, block=True)
+@notice_handle.handle()
+async def GroupNewMember(bot: Bot, event: GroupIncreaseNoticeEvent):
+    if event.user_id == event.self_id:
+        await bot.send_group_msg(group_id=event.group_id, message=Message(MessageSegment.text('这又是什么鸡巴群 没节目效果就退了\n')))
+    else:
+      try:
+        await bot.send_group_msg(group_id=event.group_id, message=Message(MessageSegment.at(event.user_id) + MessageSegment.text("哈哈 年纪轻轻就进这种群 这辈子有咯~")))
+      except Exception as e:
+            logger.info(f"发送消息失败,被禁言可能性微存: {e}")
 
 CommandTest = on_command("test",aliases={"测试"},priority=1,block=False)
 @CommandTest.handle()
@@ -139,13 +148,7 @@ if reply_type > -1:
         random_int2= random.randint(0,100)
         logger.info(f"本次生成的随机数1的值为: {random_int1}")
         logger.info(f"本次生成的随机数2的值为: {random_int2}")
-        #logger.info(f"Last_msg: {event.message_id}")
-        tid = datetime.datetime.fromtimestamp(event.time)
-        time = tid.strftime('%Y-%m-%d %H:%M:%S')
-        #logger.info(f"Last_msg_time: {time}")
-        #logger.info(f"来自群: {GroupID}")
-        #logger.info(f"The Msg is {msg}")
-        
+
         if random_int1<5:
            Is_Reply=1
 
@@ -156,6 +159,11 @@ if reply_type > -1:
         for i in range(len(ignore)):
             if msg.startswith(ignore[i]):
                 await ai.finish()
+
+        if GroupID=='636925153':
+           if Is_Reply==1:
+              await ai.finish(Message(random.choice(hello__reply)))
+           else: await ai.finish() 
 
         if "空调" in msg:
             AirconPath = Path(img_path) / "吹空调.gif"
