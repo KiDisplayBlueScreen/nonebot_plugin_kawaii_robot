@@ -4,6 +4,8 @@ from nonebot.adapters import Bot as BaseBot
 from nonebot.message import event_postprocessor
 import time,datetime,json
 from nonebot.rule import to_me
+from nonebot.permission import SUPERUSER
+from nonebot.params import CommandArg
 from nonebot.log import logger
 from apscheduler.triggers.interval import IntervalTrigger
 from nonebot import require
@@ -16,13 +18,14 @@ from nonebot.adapters.onebot.v11 import (
     MessageSegment,
     PokeNotifyEvent,
     GroupRecallNoticeEvent,
+    PrivateMessageEvent,
     GroupIncreaseNoticeEvent,
     Bot,
 )
 from typing import Any, Dict, Optional
 import nonebot
 import asyncio
-import random
+from random import *
 import pathlib
 import re
 import os
@@ -99,7 +102,8 @@ async def Recall_handle(bot:Bot, event: GroupRecallNoticeEvent):
                     await Recall.send(message=Text_to_send1+MessageSegment.image(IO_sticker)+Text_to_send2)
                   except Exception as e:
                     logger.info(f"被禁言可能性微存: {e}")
-                               
+                 
+
 notice_handle = on_notice(priority=5, block=True)
 @notice_handle.handle()
 async def GroupNewMember(bot: Bot, event: GroupIncreaseNoticeEvent):
@@ -125,6 +129,29 @@ async def TestHandle(bot: Bot, event: GroupMessageEvent):
                 logger.info(f"历史消息: {MsgHis}")
                 logger.info(f"历史消息时间: {dt}")
 
+def message_preprocess(message: str):
+    raw_message = message
+    contained_images = {}
+    images = re.findall(r'\[CQ:image.*?]', message)
+    for i in images:
+        contained_images.update({i: [re.findall(r'url=(.*?)[,\]]', i)[0][0], re.findall(r'file=(.*?)[,\]]', i)[0][0]]})
+    for i in contained_images:
+        message = message.replace(i, f'[{contained_images[i][1]}]')
+    return message, raw_message
+
+MassSending = on_command("群发",aliases={"qf"},priority=1,block=False,permission=SUPERUSER)
+@MassSending.handle()
+async def MassHandle(bot: Bot, event: PrivateMessageEvent,arg: Message = CommandArg()):               
+                message, raw_message= message_preprocess(str(event.message))
+                logger.info(f"即将群发: {raw_message}")
+                raw_message=raw_message.replace("/qf", "").strip()
+                for i in range(len(BrocastGroup)):
+                     try: 
+                         await bot.send_group_msg(group_id=BrocastGroup[i],message=raw_message,auto_escape=False)
+                         await asyncio.sleep(1)
+                     except Exception as e:
+                         logger.info(f"可能被禁言: {e}")  
+
 
 # 优先级99，条件：艾特bot就触发(改为不需at, 即处理所有消息)
 if reply_type > -1:
@@ -136,6 +163,7 @@ if reply_type > -1:
         Is_Reply = 0
         Is_long_img=0
         Is_text=event.get_message().extract_plain_text()
+
         
         msg = str(event.get_message())
         TempName = "temp.jpg"
@@ -144,12 +172,15 @@ if reply_type > -1:
         GroupID = parts[1]
         UserID = parts[2]
 
+        seed(a=None)
         random_int1= random.randint(0,100)
         random_int2= random.randint(0,100)
         logger.info(f"本次生成的随机数1的值为: {random_int1}")
         logger.info(f"本次生成的随机数2的值为: {random_int2}")
 
-        if random_int1<5:
+        logger.info(f"The Msg is {event.message_type}")
+        
+        if random_int1<2 and (GroupID in Target_Group):
            Is_Reply=1
 
         if random_int2<4 and (GroupID in Target_Group):
@@ -159,15 +190,10 @@ if reply_type > -1:
         for i in range(len(ignore)):
             if msg.startswith(ignore[i]):
                 await ai.finish()
-
-        if GroupID=='636925153':
-           if Is_Reply==1:
-              await ai.finish(Message(random.choice(hello__reply)))
-           else: await ai.finish() 
-
+ 
         if "空调" in msg:
             AirconPath = Path(img_path) / "吹空调.gif"
-            #user =''
+            #user =
             #at_ = "[CQ:at,qq={}]".format(user)
             #await bot.send_group_msg(group_id=GroupID,message=at_)
             await ai.finish(MessageSegment.image(AirconPath))
